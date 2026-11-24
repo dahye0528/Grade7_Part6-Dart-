@@ -343,7 +343,7 @@ th{background:rgba(255,210,63,.4)}
 const FIREBASE_CONFIG={
  apiKey:"",
  authDomain:"",
- databaseURL:"https://grade-part6-dart-default-rtdb.asia-southeast1.firebasedatabase.app",
+ databaseURL:"https://dart-96a29-default-rtdb.asia-southeast1.firebasedatabase.app",
  projectId:"",
  appId:""
 };
@@ -900,7 +900,7 @@ $("#go").onclick=()=>{
   db=firebase.database();
   db.ref("dart/_codes/"+safe(cv)).once("value").then(x=>{
    if(done)return;clearTimeout(tm);
-   if(!x.val()){fail("'"+cv+"'은(는) 선생님이 만든 수업 코드가 아니에요. 코드를 다시 확인해 주세요.");return}
+   if(!x.val()){fail("'"+cv+"'은(는) 선생님이 만든 수업 코드가 아니에요. 코드를 다시 확인해 주세요. [연결: "+String(c.databaseURL).replace("https://","").split("-default")[0]+" · v9]");return}
    done=true;enter();
   }).catch(e=>{clearTimeout(tm);fail("서버 오류: "+(e.code||"")+" (선생님께 알려 주세요)")});
  }catch(e){clearTimeout(tm);fail("서버에 연결하지 못했어요.")}
