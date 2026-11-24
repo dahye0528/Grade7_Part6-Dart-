@@ -150,6 +150,7 @@ th{background:rgba(255,210,63,.4)}
 <select id="lv" title="난이도"><option>쉬움</option><option selected>보통</option><option>어려움</option></select>
 <button id="go">입장</button>
 </div>
+<p id="lerr" class="sub" style="margin:8px 0 0;color:#e5484d;font-weight:700" hidden></p>
 <p class="sub" style="margin:8px 0 0">수업 코드는 선생님이 알려 준 대로 적고, 모둠원 모두 같은 모둠, 같은 난이도를 골라요.</p>
 </section>
 
@@ -366,7 +367,15 @@ function st(s){
 }
 const fmt=x=>String(Math.round(x*10)/10);
 const modeTxt=s=>s.mx===1?"모두 1회":s.modes.join(", ");
-let lastProg="";
+let lastProg="",off=0,regSeen=false,regV=undefined;
+function chkReg(){
+ if(regV===undefined||!me.lt)return;
+ if(regV===null){if(regSeen)resetLocal();return}
+ regSeen=true;
+ const kk=me.g+"_"+safe(me.name),t=Math.max(+regV.reset||0,+(regV.kick&&regV.kick[kk])||0);
+ if(t&&t>me.lt)resetLocal()
+}
+function resetLocal(){try{localStorage.removeItem(key)}catch(e){}location.reload()}
 function progW(){if(!db||!code||!me.name)return;const k=me.g+"_"+safe(me.name),sg=k+"|"+me.step+"|"+me.scores.length;if(sg===lastProg)return;lastProg=sg;db.ref("dart/"+code+"/_prog/"+k).set({name:me.name,g:me.g,step:me.step,t:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{})}
 function save(){try{localStorage.setItem(key,JSON.stringify({me,manual}))}catch(e){}progW()}
 function load(){try{const d=JSON.parse(localStorage.getItem(key));if(d&&d.me){me=Object.assign(me,d.me,{name:me.name,g:me.g});manual=d.manual||[]}}catch(e){}}
@@ -854,6 +863,8 @@ function connect(){
   db=firebase.database();
   setTimeout(()=>{if(!online){slow=true;render()}},10000);
   db.ref(".info/connected").on("value",s=>{online=!!s.val();if(online){slow=false;lastProg="";progW()}render()});
+  db.ref(".info/serverTimeOffset").on("value",x=>{off=+x.val()||0;if(!me.lt){me.lt=Date.now()+off;save()}chkReg()});
+  db.ref("dart/_codes/"+code).on("value",x=>{regV=x.val();chkReg()});
   db.ref("dart/"+code).on("value",s=>{dberr="";data=s.val()||{};render()},e=>{dberr=e.code||"오류";render()});
   sync();
  }catch(e){db=null;render()}
@@ -864,15 +875,35 @@ function connect(){
   $("#login").insertAdjacentHTML("beforeend",'<p class="no" style="margin:8px 0 0">⚠ 서버에 연결할 수 없어요. 인터넷 연결을 확인하거나 선생님께 알려 주세요.</p>');
  }
 })();
-$("#go").onclick=()=>{
- const n=$("#nm").value.trim();if(!n){$("#nm").focus();return}
- code=safe($("#cc").value.trim());if(!code){$("#cc").focus();return}
+function enter(){
+ const n=$("#nm").value.trim();
+ code=safe($("#cc").value.trim());
  me.name=n;me.g=$("#gp").value;key="dart4-"+code+"-"+me.g+"-"+n;load();
  $("#idtag").textContent=me.g+"모둠 · "+me.name;$("#idtag").hidden=false;
  $("#login").hidden=true;$("#game").hidden=false;document.body.classList.add("in");
  ["a1","a2","a3"].forEach(i=>$("#"+i).value="");$("#wy").value=me.why||"";
  lv=SPD[$("#lv").value]||1;drawBoard();if(hasDs())build2();render();connect();if(!raf)raf=requestAnimationFrame(tick);
  setInterval(()=>{if(me.step===4)render()},1000);
+}
+$("#go").onclick=()=>{
+ const n=$("#nm").value.trim(),cv=$("#cc").value.trim(),er=$("#lerr");
+ er.hidden=true;
+ if(!n){$("#nm").focus();return}
+ if(!/^[0-9]+반$/.test(cv)){er.textContent="수업 코드는 '숫자+반' 모양이에요. 예: 1반, 12반 (선생님이 알려 준 코드를 그대로 써요)";er.hidden=false;$("#cc").focus();return}
+ const c=FIREBASE_CONFIG;
+ if(!(window.firebase&&c.databaseURL)){er.textContent="서버에 연결할 수 없어요.";er.hidden=false;return}
+ $("#go").disabled=true;let done=false;
+ const fail=m=>{if(done)return;done=true;$("#go").disabled=false;er.textContent=m;er.hidden=false};
+ const tm=setTimeout(()=>fail("서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요."),8000);
+ try{
+  if(!firebase.apps.length)firebase.initializeApp(c);
+  db=firebase.database();
+  db.ref("dart/_codes/"+safe(cv)).once("value").then(x=>{
+   if(done)return;clearTimeout(tm);
+   if(!x.val()){fail("'"+cv+"'은(는) 선생님이 만든 수업 코드가 아니에요. 코드를 다시 확인해 주세요.");return}
+   done=true;enter();
+  }).catch(e=>{clearTimeout(tm);fail("서버 오류: "+(e.code||"")+" (선생님께 알려 주세요)")});
+ }catch(e){clearTimeout(tm);fail("서버에 연결하지 못했어요.")}
 };
 </script>
 </body>

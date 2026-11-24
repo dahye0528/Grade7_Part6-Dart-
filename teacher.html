@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>다트왕 선발대회 · 선생님용</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Black+Han+Sans&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#fff7e0;font-family:'Jua',system-ui,sans-serif;color:#2b2140}
+.wrap{max-width:1100px;margin:0 auto;padding:14px}
+h1{font-family:'Black Han Sans','Jua',sans-serif;margin:6px 0;font-size:28px;color:#3b2a7a}
+h2{margin:0 0 8px;font-size:20px}
+h3{margin:0 0 6px;font-size:17px}
+.card{background:#fff;border:3px solid #3b2a7a;border-radius:16px;padding:12px 14px;margin:12px 0;box-shadow:4px 4px 0 #3b2a7a}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input{font:inherit;padding:8px 10px;border:2px solid #3b2a7a;border-radius:10px;width:150px}
+button{font:inherit;padding:8px 14px;border:2px solid #3b2a7a;border-radius:10px;background:#ffd34d;cursor:pointer}
+button.on{background:#3b2a7a;color:#fff}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.stat{display:flex;gap:10px;flex-wrap:wrap}
+.stat div{flex:1 1 130px;background:#f3ecff;border-radius:12px;padding:8px 10px;text-align:center}
+.stat b{display:block;font-size:26px;color:#3b2a7a}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.g{border:2px solid #3b2a7a;border-radius:12px;padding:8px 10px;background:#fffdf5}
+.dim{color:#8a7fa5}
+.tag{font-size:13px;background:#ffe9a8;border-radius:8px;padding:1px 7px;margin-left:4px}
+.chip{display:inline-block;min-width:24px;text-align:center;background:#eee6ff;border-radius:8px;padding:0 5px;margin:1px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{border:1px solid #cbb8f0;padding:4px 7px;text-align:center;white-space:nowrap}
+th{background:#ece3ff}
+td.l{text-align:left}
+.st{display:inline-block;border-radius:8px;padding:1px 8px;color:#fff;background:#3b2a7a}
+.old{opacity:.55}
+.hist{display:flex;gap:4px;align-items:flex-end;height:120px;margin-top:6px}
+.hist div{flex:1;text-align:center;font-size:12px}
+.hist i{display:block;background:#7a5af8;border-radius:6px 6px 0 0;min-height:2px}
+.why{background:#f6f2ff;border-radius:10px;padding:6px 9px;margin:5px 0}
+.x{font:inherit;font-size:13px;padding:1px 7px;background:#fff;border-color:#c0392b;color:#c0392b;border-radius:8px}
+.x.arm{background:#c0392b;color:#fff}
+.ok{color:#1c8a4a}.warn{color:#c0392b}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>🎯 다트왕 선발대회 · 선생님용</h1>
+<div id="home">
+ <div class="card">
+  <h2>수업 코드 만들기</h2>
+  <p class="dim" style="margin:0 0 8px">학생은 여기서 만든 '숫자+반' 코드로만 입장할 수 있어요. (예: 1반, 12반)</p>
+  <div class="bar">
+   <input id="nc" placeholder="예: 1반"><button id="mk">만들기</button>
+   <span class="dim">|</span>
+   <input id="r1" type="number" min="0" placeholder="시작" style="width:70px">~<input id="r2" type="number" min="0" placeholder="끝" style="width:70px">반
+   <button id="mkr">한꺼번에 만들기</button>
+  </div>
+  <div id="hmsg" class="dim" style="margin-top:6px"></div>
+ </div>
+ <div class="card"><h2>수업 코드 목록</h2><div id="clist"></div></div>
+</div>
+<div id="bar2" hidden class="card"><div class="bar"><button id="back">← 수업 코드 목록</button><h2 style="margin:0" id="ctitle"></h2><span id="status" class="dim"></span></div>
+ <p class="dim" style="margin:6px 0 0">화면은 학생들이 진행하는 대로 자동으로 바뀌어요. 학생 옆의 🗑 버튼으로 그 학생의 기록을 지울 수 있어요.</p></div>
+<div id="main" hidden>
+ <div class="card"><div class="stat" id="sum"></div></div>
+ <div class="tabs" id="tabs"></div>
+ <div id="view"></div>
+</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+/* 학생용(index.html)과 같은 Firebase 설정이어야 해요 */
+const FIREBASE_CONFIG={
+ apiKey:"",
+ authDomain:"",
+ databaseURL:"https://grade-part6-dart-default-rtdb.asia-southeast1.firebasedatabase.app",
+ projectId:"",
+ appId:""
+};
+const $=s=>document.querySelector(s);
+const safe=s=>String(s).replace(/[.$#\[\]\/]/g,"_");
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const N=10,FN=5;
+const STEPS=["","개인 플레이","모둠 대표","다른 모둠","대표 대결","점수 목록","줄기와 잎","도수분포표","그래프","분석","총정리"];
+const COL=["","#8e8e9a","#4f8cff","#2fb7a8","#e8a100","#e0713a","#9b59d6","#c24fa0","#3b7dd8","#2a9d5c","#1c6b3a"];
+let all={},data={},db=null,code="",tab="roster",online=false,lsort=false,ref=null,armed="",armT=0,loaded=false;
+
+function clean(a){return Array.isArray(a)?a.filter(v=>Number.isInteger(v)&&v>=0&&v<=10).slice(0,N):[]}
+function st(s){
+ if(!s.length)return null;
+ const so=[...s].sort((a,b)=>a-b),m=s.length,avg=s.reduce((a,b)=>a+b,0)/m;
+ const med=m%2?so[(m-1)/2]:(so[m/2-1]+so[m/2])/2;
+ const c={};s.forEach(v=>c[v]=(c[v]||0)+1);
+ const mx=Math.max(...Object.values(c));
+ return{avg,med,modes:Object.keys(c).filter(k=>c[k]===mx).map(Number).sort((a,b)=>a-b),mx};
+}
+const fmt=x=>String(Math.round(x*10)/10);
+const modeTxt=s=>s?(s.mx===1?"모두 1회":s.modes.join(", ")):"-";
+const sum=a=>a.reduce((x,y)=>x+y,0);
+function kids(o){return o&&typeof o==="object"?Object.keys(o).map(k=>o[k]).filter(v=>v&&typeof v==="object"):[]}
+
+/* 학생 목록 만들기 */
+function students(){
+ const m=new Map();
+ Object.keys(data).forEach(g=>{
+  if(g.charAt(0)==="_")return;
+  kids(data[g]).forEach(q=>{if(!q.name)return;
+   m.set(g+"|"+safe(q.name),{g:g,name:String(q.name),scores:clean(q.scores),sp:String(q.sp||""),sw:String(q.sw||""),step:0,t:0})});
+ });
+ const pg=data._prog||{};
+ Object.keys(pg).forEach(k=>{const q=pg[k];if(!q||!q.name)return;
+  const id=String(q.g)+"|"+safe(q.name);
+  let s=m.get(id);
+  if(!s){s={g:String(q.g),name:String(q.name),scores:[],sp:"",sw:"",step:0,t:0};m.set(id,s)}
+  s.step=+q.step||0;s.t=+q.t||0;
+ });
+ const ans=data._ans||{},tp=data._topics||{};
+ m.forEach(s=>{
+  const k=s.g+"_"+safe(s.name);
+  s.ans=ans[k]||null;s.topic=tp[k]||null;
+  if(!s.step){ /* 진행 정보가 없으면 기록으로 추정 */
+   s.step=s.topic?10:s.ans?9:s.scores.length>=N?(s.sp?3:2):1;
+  }
+  s.total=sum(s.scores);
+ });
+ return[...m.values()].sort((a,b)=>(+a.g-+b.g)||a.name.localeCompare(b.name,"ko"));
+}
+function ago(t){
+ if(!t)return"";
+ const d=Math.max(0,Date.now()-t)/1000;
+ return d<60?"방금":d<3600?Math.floor(d/60)+"분 전":Math.floor(d/3600)+"시간 전";
+}
+const stBadge=s=>`<span class="st" style="background:${COL[s]||"#888"}">${s} ${STEPS[s]||""}</span>`;
+
+function rep(list){ /* 모둠원이 제출한 대표 중 가장 많이 뽑힌 사람 */
+ const c={};list.forEach(s=>{if(s.sp)c[s.sp]=(c[s.sp]||0)+1});
+ const ks=Object.keys(c).sort((a,b)=>c[b]-c[a]);
+ return ks.length?{name:ks[0],n:c[ks[0]],all:c,tie:ks.length>1&&c[ks[1]]===c[ks[0]]}:null;
+}
+
+/* 화면 */
+function renderSum(L){
+ const gs=[...new Set(L.map(s=>s.g))];
+ const done=L.filter(s=>s.scores.length>=N).length;
+ const sp=L.filter(s=>s.sp).length;
+ const fin=data._final||{};
+ const fc=Object.keys(fin).filter(g=>fin[g]&&fin[g].name).length;
+ const active=L.filter(s=>s.t&&Date.now()-s.t<5*60000).length;
+ $("#sum").innerHTML=[["접속한 학생",L.length+"명"],["모둠 수",gs.length+"개"],["10번 다 던짐",done+"명"],["대표 제출",sp+"명"],["대표 대결 참가",fc+"모둠"],["최근 5분 활동",active+"명"]].map(x=>`<div>${x[0]}<b>${x[1]}</b></div>`).join("");
+}
+function vRoster(L){
+ const gs={};L.forEach(s=>(gs[s.g]=gs[s.g]||[]).push(s));
+ const keys=Object.keys(gs).sort((a,b)=>a-b);
+ if(!keys.length)return'<div class="card dim">아직 접속한 학생이 없어요.</div>';
+ return'<div class="grid">'+keys.map(g=>{
+  const l=gs[g],r=rep(l);
+  return`<div class="g"><h3>${esc(g)}모둠 <span class="tag">${l.length}명</span> <button class="x" data-delg="${esc(g)}" title="이 모둠 전체 삭제">모둠 비우기</button></h3>
+  <p style="margin:0 0 6px">대표: ${r?`<b>${esc(r.name)}</b> (${r.n}표)${r.tie?' <span class="warn">· 동점</span>':''}`:'<span class="dim">아직 정하지 않았어요</span>'}</p>`+
+  l.map(s=>`<div><button class="x" data-del="${esc(s.g)}|${esc(s.name)}" title="이 학생 기록 삭제">🗑</button> ${esc(s.name)} ${stBadge(s.step)} <span class="dim">${s.scores.length}/${N}</span>${s.scores.length>=N?` <b>${s.total}점</b>`:""}${s.sp?` <span class="dim">→ ${esc(s.sp)}</span>`:""}</div>`).join("")+"</div>"}).join("")+"</div>";
+}
+function vProg(L){
+ const c=Array(11).fill(0);L.forEach(s=>c[s.step]++);
+ const mx=Math.max(1,...c);
+ const hist='<div class="hist">'+STEPS.map((n,i)=>i?`<div><span>${c[i]}</span><i style="height:${Math.round(c[i]/mx*90)}px;background:${COL[i]}"></i>${i}<br>${n}</div>`:"").join("")+"</div>";
+ const rows=L.map(s=>{
+  const old=s.t&&Date.now()-s.t>10*60000;
+  return`<tr class="${old?"old":""}"><td>${esc(s.g)}</td><td class="l">${esc(s.name)}</td><td>${stBadge(s.step)}</td><td>${s.scores.length}/${N}</td><td>${s.sp?esc(s.sp):"-"}</td><td>${s.ans?"✔":"-"}</td><td>${s.topic?"✔":"-"}</td><td class="dim">${ago(s.t)||"-"}</td><td><button class="x" data-del="${esc(s.g)}|${esc(s.name)}">🗑</button></td></tr>`}).join("");
+ return`<div class="card"><h2>단계별 학생 수</h2>${hist}<p class="dim" style="margin:6px 0 0">진행 단계는 학생 화면이 열려 있을 때 갱신돼요. 오래된 행은 흐리게 보여요(10분 이상 활동 없음).</p></div>
+ <div class="card"><h2>학생별 진행 현황</h2><div class="scroll"><table><tr><th>모둠</th><th>이름</th><th>현재 화면</th><th>던진 수</th><th>고른 대표</th><th>9 답안</th><th>10 주제</th><th>마지막 활동</th><th>삭제</th></tr>${rows}</table></div></div>`;
+}
+function vFinal(L){
+ const fin=data._final||{};
+ const gs=[...new Set(L.map(s=>s.g).concat(Object.keys(fin)))].filter(g=>g.charAt(0)!=="_").sort((a,b)=>a-b);
+ const rows=gs.map(g=>{
+  const f=fin[g],r=rep(L.filter(s=>s.g===g));
+  if(!f||!f.name)return{g,txt:`<tr><td>${esc(g)}</td><td class="l">${r?esc(r.name)+" (선정)":"-"}</td><td colspan="4" class="dim">아직 던지지 않았어요</td></tr>`,tot:-1};
+  const sc=clean(f.scores),t=sum(sc),s=st(sc);
+  return{g,tot:t,sc:sc.length,txt:`<tr><td>${esc(g)}</td><td class="l">${esc(f.name)}</td><td>${sc.map(v=>`<span class="chip">${v}</span>`).join("")||"-"} <span class="dim">${sc.length}/${FN}</span></td><td><b>${t}</b></td><td>${s?fmt(s.avg):"-"}</td><td>${s?fmt(s.med)+" / "+modeTxt(s):"-"}</td></tr>`};
+ }).sort((a,b)=>b.tot-a.tot);
+ if(!rows.length)return'<div class="card dim">아직 대표 대결 기록이 없어요.</div>';
+ return`<div class="card"><h2>대표 대결 (총점 순)</h2><div class="scroll"><table><tr><th>모둠</th><th>대표</th><th>점수</th><th>총점</th><th>평균</th><th>중앙값 / 최빈값</th></tr>${rows.map(r=>r.txt).join("")}</table></div><p class="dim" style="margin:6px 0 0">${FN}번을 모두 던진 모둠만 순위가 확정돼요.</p></div>`;
+}
+function vScores(L){
+ const rows=L.filter(s=>s.scores.length).slice();
+ if(lsort)rows.sort((a,b)=>b.total-a.total);
+ const all=[].concat(...rows.map(s=>s.scores)),a=st(all);
+ const head="<tr><th>모둠</th><th>이름</th>"+Array.from({length:N},(_,i)=>`<th>${i+1}</th>`).join("")+"<th>총점</th><th>평균</th><th>중앙값</th><th>최빈값</th></tr>";
+ const body=rows.map(s=>{const x=st(s.scores);return`<tr><td>${esc(s.g)}</td><td class="l">${esc(s.name)}</td>${Array.from({length:N},(_,i)=>`<td>${s.scores[i]==null?"":s.scores[i]}</td>`).join("")}<td><b>${s.total}</b></td><td>${x?fmt(x.avg):""}</td><td>${x?fmt(x.med):""}</td><td>${modeTxt(x)}</td></tr>`}).join("");
+ return`<div class="card"><div class="bar"><h2 style="margin:0">점수 목록</h2><button id="ls">${lsort?"모둠 순으로 보기":"총점 높은 순으로 보기"}</button><button id="csv">CSV 내려받기</button></div>
+ <p class="dim">던진 학생 ${rows.length}명${a?` · 전체 던진 점수 평균 ${fmt(a.avg)}점`:""}</p><div class="scroll"><table>${head}${body}</table></div></div>`;
+}
+function vAns(L){
+ const w=L.filter(s=>s.ans);
+ const t=L.filter(s=>s.topic);
+ const tally=k=>{const c={};w.forEach(s=>{const v=s.ans[k];if(v)c[v]=(c[v]||0)+1});return Object.keys(c).map(x=>`${esc(x)} ${c[x]}명`).join(" · ")||"-"};
+ return`<div class="card"><h2>9단계 분석 답안 (${w.length}명)</h2><p>다혜: ${tally("s")}<br>태희: ${tally("j")}</p>`+
+ (w.map(s=>`<div class="why"><b>${esc(s.g)}모둠 ${esc(s.name)}</b><br>다혜 → ${esc(s.ans.s)}: ${esc(s.ans.sr)}<br>태희 → ${esc(s.ans.j)}: ${esc(s.ans.jr)}</div>`).join("")||'<p class="dim">아직 제출한 학생이 없어요.</p>')+`</div>
+ <div class="card"><h2>10단계 탐구 주제 (${t.length}명)</h2>`+(t.map(s=>`<div class="why">💡 <b>${esc(s.name)}</b> <span class="tag">${esc(s.g)}모둠</span><br>${esc(s.topic.t)}</div>`).join("")||'<p class="dim">아직 제출한 학생이 없어요.</p>')+"</div>";
+}
+const TABS=[["roster","명단 · 모둠"],["prog","진행 현황"],["final","대표 대결"],["scores","점수 목록"],["ans","답안 · 주제"]];
+function codeList(){
+ const reg=all._codes||{},set={};
+ Object.keys(reg).forEach(c=>set[c]=1);
+ Object.keys(all).forEach(c=>{if(c.charAt(0)!=="_")set[c]=1});
+ return Object.keys(set).sort((a,b)=>(parseInt(a)-parseInt(b))||a.localeCompare(b,"ko"));
+}
+function statsOf(c){
+ const o=all[c]||{};let n=0,gs=0,last=0;
+ Object.keys(o).forEach(g=>{if(g.charAt(0)==="_")return;const k=kids(o[g]).filter(q=>q.name).length;if(k){n+=k;gs++}});
+ const pg=o._prog||{};Object.keys(pg).forEach(k=>{if(pg[k]&&+pg[k].t>last)last=+pg[k].t});
+ return{n,gs,last};
+}
+function renderHome(){
+ const cs=codeList(),reg=all._codes||{};
+ if(!cs.length){$("#clist").innerHTML='<p class="dim">아직 만든 수업 코드가 없어요. 위에서 먼저 만들어 주세요.</p>';return}
+ $("#clist").innerHTML='<div class="scroll"><table><tr><th>수업 코드</th><th>상태</th><th>학생</th><th>모둠</th><th>마지막 활동</th><th>관리</th></tr>'+cs.map(c=>{
+  const r=!!reg[c],ok=/^[0-9]+반$/.test(c),x=statsOf(c);
+  const stt=r?'<span class="ok">✔ 생성됨</span>':ok?'<span class="warn">⚠ 만들지 않은 코드 (학생 입장 불가)</span>':'<span class="warn">⚠ 형식이 달라요 (학생 입장 불가)</span>';
+  return`<tr><td><b>${esc(c)}</b></td><td class="l">${stt}</td><td>${x.n}명</td><td>${x.gs}개</td><td class="dim">${ago(x.last)||"-"}</td><td><button data-open="${esc(c)}">열기</button> <button class="x" data-clr="${esc(c)}">기록 비우기</button> <button class="x" data-delc="${esc(c)}">코드 삭제</button></td></tr>`}).join("")+"</table></div>";
+}
+function render(){
+ if(!db||!loaded)return;
+ if(!code){$("#home").hidden=false;$("#main").hidden=true;$("#bar2").hidden=true;renderHome();return}
+ $("#home").hidden=true;$("#bar2").hidden=false;
+ data=all[code]||{};
+ const L=students();
+ $("#main").hidden=false;
+ $("#ctitle").textContent="수업 코드 "+code;
+ renderSum(L);
+ $("#tabs").innerHTML=TABS.map(t=>`<button data-t="${t[0]}" class="${tab===t[0]?"on":""}">${t[1]}</button>`).join("");
+ $("#view").innerHTML=({roster:vRoster,prog:vProg,final:vFinal,scores:vScores,ans:vAns})[tab](L);
+ const ls=$("#ls");if(ls)ls.onclick=()=>{lsort=!lsort;render()};
+ const cv=$("#csv");if(cv)cv.onclick=()=>csv(L);
+ $("#status").textContent=online?`연결됨 · ${L.length}명`:"연결하는 중…";
+}
+function csv(L){
+ const rows=[["모둠","이름",...Array.from({length:N},(_,i)=>i+1),"총점"]];
+ L.filter(s=>s.scores.length).forEach(s=>rows.push([s.g,s.name,...Array.from({length:N},(_,i)=>s.scores[i]==null?"":s.scores[i]),s.total]));
+ const t="\ufeff"+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:"text/csv"}));a.download="다트왕_"+code+".csv";a.click();
+}
+/* ---- 쓰기 (생성·삭제) ---- */
+const TS=()=>firebase.database.ServerValue.TIMESTAMP;
+function msg(t,bad){const m=$("#hmsg");m.textContent=t;m.className=bad?"warn":"ok";m.style.marginTop="6px"}
+function upd(u,okmsg){
+ return db.ref().update(u).then(()=>{if(okmsg)msg(okmsg)}).catch(e=>msg("저장하지 못했어요: "+(e.code||e.message)+" (Firebase 규칙을 확인하세요)",true));
+}
+function mkCodes(list){
+ const reg=all._codes||{},u={};let n=0;
+ list.forEach(c=>{if(!reg[c]){u["dart/_codes/"+c+"/t"]=TS();n++}});
+ if(!n){msg("이미 모두 만들어진 코드예요.");return}
+ upd(u,n+"개의 수업 코드를 만들었어요.");
+}
+function delStudent(u,c,g,name){
+ const o=all[c]||{},k=g+"_"+safe(name),sn=safe(name);
+ u["dart/"+c+"/"+g+"/"+sn]=null;
+ ["_totals","_prog","_ans","_topics"].forEach(f=>u["dart/"+c+"/"+f+"/"+k]=null);
+ const f=o._final&&o._final[g];if(f&&safe(f.name)===sn)u["dart/"+c+"/_final/"+g]=null;
+ if(all._codes&&all._codes[c])u["dart/_codes/"+c+"/kick/"+k]=TS();
+}
+function doDel(kind,v){
+ if(kind==="delc"){upd({["dart/"+v]:null,["dart/_codes/"+v]:null},"수업 코드 "+v+"을(를) 삭제했어요.");return}
+ if(kind==="clr"){
+  const u={};Object.keys(all[v]||{}).forEach(k=>u["dart/"+v+"/"+k]=null);
+  if(all._codes&&all._codes[v])u["dart/_codes/"+v+"/reset"]=TS();
+  upd(u,"수업 코드 "+v+"의 기록을 모두 비웠어요. 학생 화면도 처음으로 돌아가요.");return}
+ if(kind==="del"){const[g,n]=v.split("|"),u={};delStudent(u,code,g,n);upd(u);return}
+ if(kind==="delg"){const u={};students().filter(s=>s.g===v).forEach(s=>delStudent(u,code,s.g,s.name));upd(u);return}
+}
+function arm(b,kind,v){
+ const id=kind+"|"+v;
+ if(armed===id&&b.classList.contains("arm")&&Date.now()-armT<4000){armed="";doDel(kind,v);return}
+ armed=id;armT=Date.now();
+ document.querySelectorAll(".x.arm").forEach(x=>{x.classList.remove("arm");x.textContent=x.dataset.t0});
+ b.dataset.t0=b.textContent;b.textContent="한 번 더 누르면 삭제";b.classList.add("arm");
+ setTimeout(()=>{if(b.isConnected&&b.classList.contains("arm")){b.classList.remove("arm");b.textContent=b.dataset.t0;if(armed===id)armed=""}},4000);
+}
+document.addEventListener("click",e=>{
+ const b=e.target.closest("button");if(!b)return;
+ const d=b.dataset;
+ if(d.t){tab=d.t;render();return}
+ if(d.open){code=d.open;tab="roster";render();return}
+ if(d.delc!==undefined)return arm(b,"delc",d.delc);
+ if(d.clr!==undefined)return arm(b,"clr",d.clr);
+ if(d.del!==undefined)return arm(b,"del",d.del);
+ if(d.delg!==undefined)return arm(b,"delg",d.delg);
+});
+$("#back").onclick=()=>{code="";render()};
+$("#mk").onclick=()=>{
+ const v=$("#nc").value.trim();
+ if(!/^[0-9]+반$/.test(v)){msg("'숫자+반' 모양으로 적어 주세요. 예: 1반, 12반",true);return}
+ mkCodes([v]);$("#nc").value="";
+};
+$("#mkr").onclick=()=>{
+ const a=parseInt($("#r1").value),b=parseInt($("#r2").value);
+ if(!(a>=0&&b>=a)||b-a>49){msg("시작과 끝 숫자를 확인해 주세요. (한 번에 최대 50개)",true);return}
+ const l=[];for(let i=a;i<=b;i++)l.push(i+"반");mkCodes(l);
+};
+$("#nc").addEventListener("keydown",e=>{if(e.key==="Enter")$("#mk").click()});
+function connect(){
+ const c=FIREBASE_CONFIG;
+ if(!window.firebase||!c.databaseURL){$("#clist").textContent="Firebase를 불러오지 못했어요. 인터넷 연결을 확인하세요.";return}
+ try{
+  firebase.initializeApp(c);db=firebase.database();
+  db.ref(".info/connected").on("value",s=>{online=!!s.val();render()});
+  db.ref("dart").on("value",s=>{all=s.val()||{};loaded=true;render()},e=>{$("#clist").innerHTML='<p class="warn">서버 오류: '+esc(e.code||"")+' (Firebase 규칙을 확인하세요)</p>'});
+  $("#clist").textContent="불러오는 중…";
+ }catch(e){$("#clist").textContent="연결 실패: "+e.message}
+}
+connect();
+setInterval(()=>{if(db&&loaded)render()},30000);
+</script>
+</body>
+</html>
