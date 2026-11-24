@@ -144,7 +144,7 @@ th{background:rgba(255,210,63,.4)}
 <section id="login" class="card">
 <h2>입장하기</h2>
 <div class="row">
-<input id="cc" maxlength="10" placeholder="수업 코드" size="8">
+<input id="cc" maxlength="20" placeholder="수업 코드 (예: kim-1반)" size="14">
 <input id="nm" maxlength="8" placeholder="이름">
 <select id="gp"></select>
 <select id="lv" title="난이도"><option>쉬움</option><option selected>보통</option><option>어려움</option></select>
@@ -885,11 +885,13 @@ function enter(){
  lv=SPD[$("#lv").value]||1;drawBoard();if(hasDs())build2();render();connect();if(!raf)raf=requestAnimationFrame(tick);
  setInterval(()=>{if(me.step===4)render()},1000);
 }
+try{const qc=new URLSearchParams(location.search).get("c");if(qc)$("#cc").value=qc}catch(e){}
 $("#go").onclick=()=>{
- const n=$("#nm").value.trim(),cv=$("#cc").value.trim(),er=$("#lerr");
+ const n=$("#nm").value.trim(),cv=$("#cc").value.trim().toLowerCase().replace(/\s+/g,"").replace(/[\u2010-\u2015\u2212\uff0d]/g,"-"),er=$("#lerr");
+ $("#cc").value=cv;
  er.hidden=true;
  if(!n){$("#nm").focus();return}
- if(!/^[0-9]+반$/.test(cv)){er.textContent="수업 코드는 '숫자+반' 모양이에요. 예: 1반, 12반 (선생님이 알려 준 코드를 그대로 써요)";er.hidden=false;$("#cc").focus();return}
+ if(!/^[a-z0-9가-힣]{2,12}-[0-9]+반$/.test(cv)){er.textContent="수업 코드는 '선생님코드-숫자반' 모양이에요. 예: kim-1반 (선생님이 알려 준 코드를 그대로 써요)";er.hidden=false;$("#cc").focus();return}
  const c=FIREBASE_CONFIG;
  if(!(window.firebase&&c.databaseURL)){er.textContent="서버에 연결할 수 없어요.";er.hidden=false;return}
  $("#go").disabled=true;let done=false;

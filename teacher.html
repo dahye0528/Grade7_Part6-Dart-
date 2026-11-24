@@ -47,12 +47,26 @@ td.l{text-align:left}
 <body>
 <div class="wrap">
 <h1>🎯 다트왕 선발대회 · 선생님용</h1>
-<div id="home">
+<div id="gate" class="card">
+ <h2>선생님 코드로 들어가기</h2>
+ <p class="dim" style="margin:0 0 8px">선생님마다 자기 코드가 있어서, 내가 만든 반만 보여요. 처음이라면 코드를 새로 만들어 주세요.</p>
+ <div class="bar">
+  <label>선생님 코드 <input id="tid" placeholder="영문·숫자·한글 2~12자" maxlength="12" autocomplete="off"></label>
+  <label>비밀번호 <input id="tpw" type="password" placeholder="4자 이상" autocomplete="off"></label>
+ </div>
+ <div class="bar" style="margin-top:8px"><button id="tlogin">로그인</button><button id="treg">처음 쓰기 (선생님 코드 만들기)</button></div>
+ <div id="gmsg" class="dim" style="margin-top:6px"></div>
+ <p class="dim" style="margin:8px 0 0">비밀번호는 같은 학교 선생님끼리 실수로 남의 반을 건드리지 않게 막는 용도예요. 은행 비밀번호처럼 쓰지 마세요.</p>
+</div>
+<div id="home" hidden>
+ <div class="card">
+  <div class="bar"><b id="whoami"></b><button id="logout">로그아웃</button></div>
+ </div>
  <div class="card">
   <h2>수업 코드 만들기</h2>
-  <p class="dim" style="margin:0 0 8px">학생은 여기서 만든 '숫자+반' 코드로만 입장할 수 있어요. (예: 1반, 12반)</p>
+  <p class="dim" style="margin:0 0 8px" id="mkhint">학생은 <b>선생님코드-숫자반</b> 모양으로 입장해요. 숫자만 적으면 앞에 내 코드가 자동으로 붙어요.</p>
   <div class="bar">
-   <input id="nc" placeholder="예: 1반"><button id="mk">만들기</button>
+   <input id="nc" placeholder="예: 1반 또는 1"><button id="mk">만들기</button>
    <span class="dim">|</span>
    <input id="r1" type="number" min="0" placeholder="시작" style="width:70px">~<input id="r2" type="number" min="0" placeholder="끝" style="width:70px">반
    <button id="mkr">한꺼번에 만들기</button>
@@ -87,7 +101,7 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
 const N=10,FN=5;
 const STEPS=["","개인 플레이","모둠 대표","다른 모둠","대표 대결","점수 목록","줄기와 잎","도수분포표","그래프","분석","총정리"];
 const COL=["","#8e8e9a","#4f8cff","#2fb7a8","#e8a100","#e0713a","#9b59d6","#c24fa0","#3b7dd8","#2a9d5c","#1c6b3a"];
-let all={},data={},db=null,code="",tab="roster",online=false,lsort=false,ref=null,armed="",armT=0,loaded=false;
+let tid="",ls={},all={},data={},db=null,code="",tab="roster",online=false,lsort=false,ref=null,armed="",armT=0,loaded=false;
 
 function clean(a){return Array.isArray(a)?a.filter(v=>Number.isInteger(v)&&v>=0&&v<=10).slice(0,N):[]}
 function st(s){
@@ -203,10 +217,7 @@ function vAns(L){
 }
 const TABS=[["roster","명단 · 모둠"],["prog","진행 현황"],["final","대표 대결"],["scores","점수 목록"],["ans","답안 · 주제"]];
 function codeList(){
- const reg=all._codes||{},set={};
- Object.keys(reg).forEach(c=>set[c]=1);
- Object.keys(all).forEach(c=>{if(c.charAt(0)!=="_")set[c]=1});
- return Object.keys(set).sort((a,b)=>(parseInt(a)-parseInt(b))||a.localeCompare(b,"ko"));
+ return Object.keys(all._codes||{}).sort((a,b)=>(parseInt(a.split("-").pop())-parseInt(b.split("-").pop()))||a.localeCompare(b,"ko"));
 }
 function statsOf(c){
  const o=all[c]||{};let n=0,gs=0,last=0;
@@ -220,7 +231,7 @@ function renderHome(){
  $("#clist").innerHTML='<div class="scroll"><table><tr><th>수업 코드</th><th>상태</th><th>학생</th><th>모둠</th><th>마지막 활동</th><th>관리</th></tr>'+cs.map(c=>{
   const r=!!reg[c],ok=/^[0-9]+반$/.test(c),x=statsOf(c);
   const stt=r?'<span class="ok">✔ 생성됨</span>':ok?'<span class="warn">⚠ 만들지 않은 코드 (학생 입장 불가)</span>':'<span class="warn">⚠ 형식이 달라요 (학생 입장 불가)</span>';
-  return`<tr><td><b>${esc(c)}</b></td><td class="l">${stt}</td><td>${x.n}명</td><td>${x.gs}개</td><td class="dim">${ago(x.last)||"-"}</td><td><button data-open="${esc(c)}">열기</button> <button class="x" data-clr="${esc(c)}">기록 비우기</button> <button class="x" data-delc="${esc(c)}">코드 삭제</button></td></tr>`}).join("")+"</table></div>";
+  return`<tr><td><b>${esc(c)}</b></td><td class="l">${stt}</td><td>${x.n}명</td><td>${x.gs}개</td><td class="dim">${ago(x.last)||"-"}</td><td><button data-open="${esc(c)}">열기</button> <button data-cp="${esc(c)}">학생 링크 복사</button> <button class="x" data-clr="${esc(c)}">기록 비우기</button> <button class="x" data-delc="${esc(c)}">코드 삭제</button></td></tr>`}).join("")+"</table></div>";
 }
 function render(){
  if(!db||!loaded)return;
@@ -284,6 +295,9 @@ document.addEventListener("click",e=>{
  const d=b.dataset;
  if(d.t){tab=d.t;render();return}
  if(d.open){code=d.open;tab="roster";render();return}
+ if(d.cp){const u=location.href.replace(/teacher\.html.*$/,"").replace(/[?#].*$/,"")+"?c="+encodeURIComponent(d.cp);
+  const ok=()=>msg("복사했어요. 학생에게 이 링크를 보내면 코드가 자동으로 입력돼요: "+u);
+  if(navigator.clipboard)navigator.clipboard.writeText(u).then(ok,()=>msg("복사하지 못했어요. 직접 복사해 주세요: "+u));else msg("직접 복사해 주세요: "+u);return}
  if(d.delc!==undefined)return arm(b,"delc",d.delc);
  if(d.clr!==undefined)return arm(b,"clr",d.clr);
  if(d.del!==undefined)return arm(b,"del",d.del);
@@ -291,28 +305,70 @@ document.addEventListener("click",e=>{
 });
 $("#back").onclick=()=>{code="";render()};
 $("#mk").onclick=()=>{
- const v=$("#nc").value.trim();
- if(!/^[0-9]+반$/.test(v)){msg("'숫자+반' 모양으로 적어 주세요. 예: 1반, 12반",true);return}
- mkCodes([v]);$("#nc").value="";
+ const m=/^([0-9]+)반?$/.exec($("#nc").value.trim());
+ if(!m){msg("숫자로 적어 주세요. 예: 1반, 12",true);return}
+ mkCodes([tid+"-"+m[1]+"반"]);$("#nc").value="";
 };
 $("#mkr").onclick=()=>{
  const a=parseInt($("#r1").value),b=parseInt($("#r2").value);
  if(!(a>=0&&b>=a)||b-a>49){msg("시작과 끝 숫자를 확인해 주세요. (한 번에 최대 50개)",true);return}
- const l=[];for(let i=a;i<=b;i++)l.push(i+"반");mkCodes(l);
+ const l=[];for(let i=a;i<=b;i++)l.push(tid+"-"+i+"반");mkCodes(l);
 };
 $("#nc").addEventListener("keydown",e=>{if(e.key==="Enter")$("#mk").click()});
+async function sha(t){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+const normId=v=>String(v).trim().toLowerCase().replace(/\s+/g,"");
+const okId=v=>/^[a-z0-9가-힣]{2,12}$/.test(v);
+function gmsg(t,bad){const m=$("#gmsg");m.textContent=t;m.className=bad?"warn":"ok"}
+function fbErr(e){return "서버 오류: "+(e&&(e.code||e.message)||"")+" (Firebase 규칙을 확인하세요)"}
+function checkInput(){
+ const id=normId($("#tid").value),pw=$("#tpw").value;
+ if(!okId(id)){gmsg("선생님 코드는 영문·숫자·한글 2~12자예요. 띄어쓰기나 기호는 쓸 수 없어요.",true);return null}
+ if(pw.length<4){gmsg("비밀번호는 4자 이상이에요.",true);return null}
+ return{id,pw}
+}
+function enterTeacher(id,h){
+ tid=id;try{sessionStorage.setItem("dart-t",JSON.stringify({id,h}))}catch(e){}
+ $("#gate").hidden=true;$("#home").hidden=false;$("#whoami").textContent="선생님 코드: "+id;
+ $("#clist").textContent="불러오는 중…";startListen();
+}
+$("#tlogin").onclick=async()=>{
+ const x=checkInput();if(!x||!db)return;
+ const h=await sha(x.id+"|"+x.pw);
+ db.ref("dart/_teachers/"+x.id).once("value").then(s=>{const v=s.val();
+  if(!v||v.h!==h){gmsg("선생님 코드나 비밀번호가 맞지 않아요. 처음이라면 '처음 쓰기'를 눌러 주세요.",true);return}
+  enterTeacher(x.id,h)}).catch(e=>gmsg(fbErr(e),true));
+};
+$("#treg").onclick=async()=>{
+ const x=checkInput();if(!x||!db)return;
+ const h=await sha(x.id+"|"+x.pw);
+ db.ref("dart/_teachers/"+x.id).transaction(cur=>cur?undefined:{h:h,t:TS()}).then(r=>{
+  if(r.committed)enterTeacher(x.id,h);else gmsg("'"+x.id+"'은(는) 이미 쓰고 있는 선생님 코드예요. 다른 코드를 정해 주세요. (본인 코드라면 '로그인'을 누르세요)",true)
+ }).catch(e=>gmsg(fbErr(e),true));
+};
+$("#tpw").addEventListener("keydown",e=>{if(e.key==="Enter")$("#tlogin").click()});
+$("#logout").onclick=()=>{try{sessionStorage.removeItem("dart-t")}catch(e){}location.reload()};
+function startListen(){
+ db.ref("dart/_codes").on("value",s=>{
+  const r=s.val()||{},mine={};
+  Object.keys(r).forEach(k=>{if(k.indexOf(tid+"-")===0)mine[k]=r[k]});
+  all._codes=mine;
+  Object.keys(mine).forEach(c=>{if(!ls[c]){ls[c]=db.ref("dart/"+c);ls[c].on("value",x=>{all[c]=x.val()||{};render()},e=>{$("#clist").innerHTML='<p class="warn">'+esc(fbErr(e))+'</p>'})}});
+  Object.keys(ls).forEach(c=>{if(!mine[c]){ls[c].off();delete ls[c];delete all[c]}});
+  loaded=true;render();
+ },e=>{$("#clist").innerHTML='<p class="warn">'+esc(fbErr(e))+'</p>'});
+}
 function connect(){
  const c=FIREBASE_CONFIG;
- if(!window.firebase||!c.databaseURL){$("#clist").textContent="Firebase를 불러오지 못했어요. 인터넷 연결을 확인하세요.";return}
+ if(!window.firebase||!c.databaseURL){gmsg("Firebase를 불러오지 못했어요. 인터넷 연결을 확인하세요.",true);return}
  try{
   firebase.initializeApp(c);db=firebase.database();
   db.ref(".info/connected").on("value",s=>{online=!!s.val();render()});
-  db.ref("dart").on("value",s=>{all=s.val()||{};loaded=true;render()},e=>{$("#clist").innerHTML='<p class="warn">서버 오류: '+esc(e.code||"")+' (Firebase 규칙을 확인하세요)</p>'});
-  $("#clist").textContent="불러오는 중…";
- }catch(e){$("#clist").textContent="연결 실패: "+e.message}
+  let sv=null;try{sv=JSON.parse(sessionStorage.getItem("dart-t"))}catch(e){}
+  if(sv&&sv.id&&sv.h)db.ref("dart/_teachers/"+sv.id).once("value").then(s=>{const v=s.val();if(v&&v.h===sv.h)enterTeacher(sv.id,sv.h)}).catch(()=>{});
+ }catch(e){gmsg("연결 실패: "+e.message,true)}
 }
 connect();
-setInterval(()=>{if(db&&loaded)render()},30000);
+setInterval(()=>{if(db&&loaded&&tid)render()},30000);
 </script>
 </body>
 </html>
